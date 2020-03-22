@@ -6,7 +6,6 @@ import django.db.models as models
 import django.utils as utils
 import pytz
 
-
 class UnixDateTimeField(models.DateTimeField):
 
     description = "Unix timestamp integer to datetime object"
@@ -22,7 +21,15 @@ class UnixDateTimeField(models.DateTimeField):
         elif self._is_string(val):
             return utils.dateparse.parse_datetime(val)
         else:
-            datetime_value = datetime.datetime.fromtimestamp(int(val))
+            milliseconds = 0
+            if getattr(conf.settings, 'UNIX_MILLISECONDS', False) and len(val) == 13:
+                milliseconds = int(val[-3:])
+                unix_timestamp = float(val[0:-3])
+            else:
+                unix_timestamp = int(val)
+                milliseconds = 0
+            datetime_value = datetime.datetime.fromtimestamp(unix_timestamp)
+            datetime_value += datetime.timedelta(milliseconds=milliseconds)
             if conf.settings.USE_TZ:
                 return utils.timezone.make_aware(datetime_value,
                             timezone=pytz.timezone(conf.settings.TIME_ZONE))
@@ -41,7 +48,10 @@ class UnixDateTimeField(models.DateTimeField):
         if val is None:
             if self.default == models.fields.NOT_PROVIDED:  return None
             return self.default
-        return int(time.mktime(val.timetuple()))
+        if getattr(conf.settings, 'UNIX_MILLISECONDS', False):
+            return int((time.mktime(val.timetuple()) + val.microsecond/1000000.0) * 1000)
+        else:
+            return int(time.mktime(val.timetuple()))
 
     def value_to_string(self, obj):
         val = self._get_val_from_obj(obj)
