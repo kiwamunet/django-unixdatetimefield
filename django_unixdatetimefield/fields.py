@@ -55,7 +55,7 @@ class UnixDateTimeField(models.DateTimeField):
 
     def value_to_string(self, obj):
         val = self._get_val_from_obj(obj)
-        return self.to_python(val).strftime(conf.settings.DATETIME_FORMAT)
+        return val
 
     def from_db_value(self, val, *args, **kwargs):
-        return self.to_python(val)
+        return val
